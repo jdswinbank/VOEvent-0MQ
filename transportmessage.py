@@ -1,49 +1,71 @@
 # VOEvent transport protocol messages.
 # John Swinbank, <swinbank@transientskp.org>, 2011.
 
-import xml.etree.ElementTree as etree
+import xml.etree.ElementTree as ElementTree
 from datetime import datetime
 
-LOCAL_IVO = "ivo://lofar/transients"
+from config import LOCAL_IVO
 
-etree.register_namespace("trn", "http://www.telescope-networks.org/xml/Transport/v1.1")
+# For neatness only; requires Python 2.7
+#ElementTree.register_namespace("trn", "http://www.telescope-networks.org/xml/Transport/v1.1")
 
 class TransportMessage(object):
+    """
+    Base class for Transport protocol messages.
+
+    Provides a Transport packet with a timestamp.
+    """
     def __init__(self):
-        self.root_element = etree.Element("{http://www.telescope-networks.org/xml/Transport/v1.1}Transport",
+        self.root_element = ElementTree.Element("{http://www.telescope-networks.org/xml/Transport/v1.1}Transport",
             attrib={
                 "version": "1.0",
                 "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
                 "xsi:schemaLocation": "http://telescope-networks.org/schema/Transport/v1.1 http://www.telescope-networks.org/schema/Transport-v1.1.xsd"
             }
         )
-        timestamp = etree.SubElement(self.root_element, "TimeStamp")
+        timestamp = ElementTree.SubElement(self.root_element, "TimeStamp")
         timestamp.text = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
     def to_string(self):
-        return etree.tostring(self.root_element)
+        """
+        Serialise the message to an XML string.
+        """
+        return ElementTree.tostring(self.root_element)
 
 class OriginResponseMessage(TransportMessage):
+    """
+    Specialist Transport packet which includes Origin and Response elements.
+    """
     def __init__(self, remote_ivo):
         super(OriginResponseMessage, self).__init__()
-        origin = etree.SubElement(self.root_element, "Origin")
+        origin = ElementTree.SubElement(self.root_element, "Origin")
         origin.text = remote_ivo
-        response = etree.SubElement(self.root_element, "Response")
+        response = ElementTree.SubElement(self.root_element, "Response")
         response.text = LOCAL_IVO
 
 class IAmAlive(TransportMessage):
+    """
+    Specialist Transport packet with an "iamalive" role and an Origin element.
+    """
     def __init__(self):
         super(IAmAlive, self).__init__()
         self.root_element.set("role", "iamalive")
-        origin = etree.SubElement(self.root_element, "Origin")
+        origin = ElementTree.SubElement(self.root_element, "Origin")
         origin.text = LOCAL_IVO
 
 class IAmAliveResponse(OriginResponseMessage):
+    """
+    Specialist Transport packet with an "iamalive" role and Origin and
+    Response elements.
+    """
     def __init__(self, remote_ivo):
         super(IAmAliveResponse, self).__init__(remote_ivo)
         self.root_element.set("role", "iamalive")
 
 class Ack(OriginResponseMessage):
+    """
+    Specialist Transport packet with an "ack" role.
+    """
     def __init__(self, remote_ivo):
         super(Ack, self).__init__(remote_ivo)
         self.root_element.set("role", "ack")

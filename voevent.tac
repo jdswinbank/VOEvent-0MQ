@@ -18,16 +18,16 @@ from twisted.python import log
 # ZeroMQ
 import zmq
 
-# Construct our transport messages
+# Utilities for constructing transport protocol messages
 import transportmessage
 
 # Configuration
-REMOTE_HOST = "voevent.dc3.com"
-REMOTE_PORT = 8099
-ZMQ_HOST = "*"
-ZMQ_PORT = 8089
-ALIVE_ROLES = ("iamalive")
-VOEVENT_ROLES = ('observation', 'prediction', 'utility', 'test')
+from config import REMOTE_HOST
+from config import REMOTE_PORT
+from config import ZMQ_HOST
+from config import ZMQ_PORT
+from config import ALIVE_ROLES
+from config import VOEVENT_ROLES
 
 # Set up our ZeroMQ context
 zmq_context = zmq.Context()
@@ -36,17 +36,31 @@ zmq_socket.setsockopt(zmq.HWM, 5)
 zmq_socket.bind("tcp://%s:%d" % (ZMQ_HOST, ZMQ_PORT))
 
 class VOEventProto(Int32StringReceiver):
-    def connectionMade(self):
-        log.msg("connection made")
+    """
+    Implements the VOEvent Transport Protocol; see
+    <http://www.ivoa.net/Documents/Notes/VOEventTransport/>.
 
+    All messages are preceded by a 4-byte network ordered payload size
+    followed by the payload data. Twisted's Int32StringReceiver handles this
+    for us automatically.
+
+    When a VOEvent is received, we broadcast it onto a ZeroMQ PUB socket.
+    """
     def stringReceived(self, data):
+        """
+        Called when a complete new message is received.
+        """
         try:
             incoming = ElementTree.fromstring(data)
+
+            # The root element of both VOEvent and Transport packets has a
+            # "role" element which we use to identify the type of message we
+            # have received.
             if incoming.get('role') in ALIVE_ROLES:
-                log.msg("Got iamalive")
+                log.msg("IAmAlive received")
                 outgoing = transportmessage.IAmAliveResponse(incoming.find('Origin').text)
             elif incoming.get('role') in VOEVENT_ROLES:
-                log.msg("Got VOEvent")
+                log.msg("VOEvent received")
                 outgoing = transportmessage.Ack(incoming.attrib['ivorn'])
                 zmq_socket.send(data)
             else:
