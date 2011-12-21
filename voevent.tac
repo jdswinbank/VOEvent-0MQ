@@ -32,6 +32,7 @@ VOEVENT_ROLES = ('observation', 'prediction', 'utility', 'test')
 # Set up our ZeroMQ context
 zmq_context = zmq.Context()
 zmq_socket = zmq_context.socket(zmq.PUB)
+zmq_socket.setsockopt(zmq.HWM, 5)
 zmq_socket.bind("tcp://%s:%d" % (ZMQ_HOST, ZMQ_PORT))
 
 class VOEventProto(Int32StringReceiver):
