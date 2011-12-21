@@ -3,7 +3,7 @@
 
 # This is a Twisted application; run it using twistd:
 #
-# $ twistd -ny voevent.tac
+# $ twistd -ny server.tac
 
 # XML parsing using ElementTree
 import xml.etree.ElementTree as ElementTree
@@ -52,7 +52,6 @@ class VOEventProto(Int32StringReceiver):
         """
         try:
             incoming = ElementTree.fromstring(data)
-
             # The root element of both VOEvent and Transport packets has a
             # "role" element which we use to identify the type of message we
             # have received.

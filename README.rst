@@ -32,7 +32,7 @@ Usage
 
 Use the `twistd` command to run the server. For example::
 
-  $ twistd -ny voevent.tac
+  $ twistd -ny server.tac
 
 Client
 ======
