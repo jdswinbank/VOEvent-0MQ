@@ -1,19 +1,17 @@
 # Simple VOEvent listener.
 # John Swinbank, <swinbank@transientskp.org>, 2011.
 
-# This is a Twisted application; run it using twistd:
-#
-# $ twistd -ny server.tac
+# Python standard library
+import sys
 
 # XML parsing using ElementTree
 import xml.etree.ElementTree as ElementTree
 
 # Twisted
-from twisted.application.service import Application
-from twisted.application.internet import TCPClient
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.protocols.basic import Int32StringReceiver
 from twisted.python import log
+from twisted.internet import reactor
 
 # ZeroMQ
 import zmq
@@ -77,6 +75,7 @@ class VOEventProtoFactory(ReconnectingClientFactory):
         self.resetDelay()
         return VOEventProto()
 
-application = Application("VOEvent Listener")
-service = TCPClient(REMOTE_HOST, REMOTE_PORT, VOEventProtoFactory())
-service.setServiceParent(application)
+if __name__ == "__main__":
+    log.startLogging(sys.stdout)
+    reactor.connectTCP(REMOTE_HOST, REMOTE_PORT, VOEventProtoFactory())
+    reactor.run()

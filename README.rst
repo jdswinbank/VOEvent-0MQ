@@ -30,9 +30,9 @@ Edit the file `config.py`.
 Usage
 -----
 
-Use the `twistd` command to run the server. For example::
+Run the server using Python::
 
-  $ twistd -ny server.tac
+  $ python server.py
 
 Client
 ======
