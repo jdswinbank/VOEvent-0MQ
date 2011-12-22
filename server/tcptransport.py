@@ -22,9 +22,9 @@ class VOEventProto(Int32StringReceiver):
     Implements the VOEvent Transport Protocol; see
     <http://www.ivoa.net/Documents/Notes/VOEventTransport/>.
 
-    All messages are preceded by a 4-byte network ordered payload size
-    followed by the payload data. Twisted's Int32StringReceiver handles this
-    for us automatically.
+    All messages consist of a 4-byte network ordered payload size followed by
+    the payload data. Twisted's Int32StringReceiver handles this for us
+    automatically.
 
     When a VOEvent is received, we broadcast it onto a ZeroMQ PUB socket.
     """
