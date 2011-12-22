@@ -1,9 +1,13 @@
 # VOEvent transport protocol messages.
 # John Swinbank, <swinbank@transientskp.org>, 2011.
 
-import xml.etree.ElementTree as ElementTree
+# Python standard library
 from datetime import datetime
 
+# XML parsing using ElementTree
+import xml.etree.ElementTree as ElementTree
+
+# Local configuration
 from config import LOCAL_IVO
 
 # For neatness only; requires Python 2.7
