@@ -27,11 +27,17 @@ from config import ZMQ_PORT
 from config import ALIVE_ROLES
 from config import VOEVENT_ROLES
 
-# Set up our ZeroMQ context
-zmq_context = zmq.Context()
-zmq_socket = zmq_context.socket(zmq.PUB)
-zmq_socket.setsockopt(zmq.HWM, 5)
-zmq_socket.bind("tcp://%s:%d" % (ZMQ_HOST, ZMQ_PORT))
+class ZMQManager(object):
+    def __init__(self, host, port, hwm=5):
+        # Set up our ZeroMQ context
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.PUB)
+        self.socket.setsockopt(zmq.HWM, hwm)
+        self.socket.bind("tcp://%s:%d" % (host, port))
+
+    def handle(self, data):
+        if data.get('role') in VOEVENT_ROLES:
+            self.socket.send(data)
 
 class VOEventProto(Int32StringReceiver):
     """
@@ -44,26 +50,40 @@ class VOEventProto(Int32StringReceiver):
 
     When a VOEvent is received, we broadcast it onto a ZeroMQ PUB socket.
     """
+    def __init__(self, zmq_manager):
+        self.zmq_manager = zmq_manager
+
     def stringReceived(self, data):
         """
         Called when a complete new message is received.
+
+        We have two jobs here:
+
+        1. Forward the message to the ZeroMQ system;
+        2. Reply according to the Transport Protocol.
         """
         try:
             incoming = ElementTree.fromstring(data)
-            # The root element of both VOEvent and Transport packets has a
-            # "role" element which we use to identify the type of message we
-            # have received.
-            if incoming.get('role') in ALIVE_ROLES:
-                log.msg("IAmAlive received")
-                outgoing = transportmessage.IAmAliveResponse(incoming.find('Origin').text)
-            elif incoming.get('role') in VOEVENT_ROLES:
-                log.msg("VOEvent received")
-                outgoing = transportmessage.Ack(incoming.attrib['ivorn'])
-                zmq_socket.send(data)
-            else:
-                log.err("Incomprehensible data received")
         except ElementTree.ParseError:
-            log.err("Unparsable message")
+            log.err("Unparsable message received")
+            return
+
+        # We have some parseable XML, so hand it off to ZeroMQ.
+        zmq_manager.handle(incoming)
+
+        # And reply if appropriate.
+        # The root element of both VOEvent and Transport packets has a
+        # "role" element which we use to identify the type of message we
+        # have received.
+        if incoming.get('role') in ALIVE_ROLES:
+            log.msg("IAmAlive received")
+            outgoing = transportmessage.IAmAliveResponse(incoming.find('Origin').text)
+        elif incoming.get('role') in VOEVENT_ROLES:
+            log.msg("VOEvent received")
+            outgoing = transportmessage.Ack(incoming.attrib['ivorn'])
+        else:
+            log.err("Incomprehensible data received")
+
         try:
             self.sendString(outgoing.to_string())
             log.msg("Sent response")
@@ -71,11 +91,15 @@ class VOEventProto(Int32StringReceiver):
             log.msg("No response to send")
 
 class VOEventProtoFactory(ReconnectingClientFactory):
+    def __init__(self, zmq_manager):
+        self.zmq_manager = zmq_manager
+
     def buildProtocol(self, addr):
         self.resetDelay()
-        return VOEventProto()
+        return VOEventProto(zmq_manager)
 
 if __name__ == "__main__":
     log.startLogging(sys.stdout)
-    reactor.connectTCP(REMOTE_HOST, REMOTE_PORT, VOEventProtoFactory())
+    zmq_manager = ZMQManager(ZMQ_HOST, ZMQ_PORT)
+    reactor.connectTCP(REMOTE_HOST, REMOTE_PORT, VOEventProtoFactory(zmq_manager))
     reactor.run()
